@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAzureDevOps } from "@/contexts/AzureDevOpsContext";
 import { WorkItem } from "@/services/azureDevOpsService";
@@ -8,7 +7,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, RefreshCw } from "lucide-react";
+import { Search, RefreshCw, Edit } from "lucide-react";
+import EditWorkItemDialog from "./EditWorkItemDialog";
 
 const WorkItemsList = () => {
   const { workItems, isLoading, refreshWorkItems, selectedProject } = useAzureDevOps();
@@ -122,6 +122,8 @@ interface WorkItemCardProps {
 }
 
 const WorkItemCard = ({ workItem }: WorkItemCardProps) => {
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const { refreshWorkItems } = useAzureDevOps();
   const { fields } = workItem;
   
   const getStateBadgeColor = (state: string) => {
@@ -166,6 +168,14 @@ const WorkItemCard = ({ workItem }: WorkItemCardProps) => {
                 {fields["System.State"]}
               </Badge>
               <span className="text-xs text-muted-foreground">#{workItem.id}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="ml-2"
+                onClick={() => setShowEditDialog(true)}
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
             </div>
             <h4 className="font-medium text-lg">{fields["System.Title"]}</h4>
             <p className="text-sm text-muted-foreground">
@@ -182,6 +192,13 @@ const WorkItemCard = ({ workItem }: WorkItemCardProps) => {
           )}
         </div>
       </CardContent>
+      
+      <EditWorkItemDialog
+        workItem={workItem}
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+        onUpdate={refreshWorkItems}
+      />
     </Card>
   );
 };

@@ -1,4 +1,3 @@
-
 import axios from "axios";
 
 // Azure DevOps API endpoints
@@ -42,6 +41,13 @@ export interface TeamMember {
   displayName: string;
   uniqueName: string;
   imageUrl?: string;
+}
+
+interface WorkItemUpdate {
+  title?: string;
+  description?: string;
+  state?: string;
+  assignedTo?: string;
 }
 
 class AzureDevOpsService {
@@ -137,6 +143,58 @@ class AzureDevOpsService {
     
     return response.data.value.map((type: any) => type.name);
   }
+
+  async updateWorkItem(projectName: string, workItemId: number, updates: WorkItemUpdate): Promise<WorkItem> {
+    if (!this.config) throw new Error("Azure DevOps configuration not set");
+    
+    const operations = [];
+    
+    if (updates.title) {
+      operations.push({
+        op: "add",
+        path: "/fields/System.Title",
+        value: updates.title
+      });
+    }
+    
+    if (updates.description) {
+      operations.push({
+        op: "add",
+        path: "/fields/System.Description",
+        value: updates.description
+      });
+    }
+    
+    if (updates.state) {
+      operations.push({
+        op: "add",
+        path: "/fields/System.State",
+        value: updates.state
+      });
+    }
+    
+    if (updates.assignedTo) {
+      operations.push({
+        op: "add",
+        path: "/fields/System.AssignedTo",
+        value: updates.assignedTo
+      });
+    }
+    
+    const response = await axios.patch(
+      `${BASE_URL}${this.config.organizationName}/_apis/wit/workitems/${workItemId}?api-version=7.0`,
+      operations,
+      {
+        headers: {
+          ...this.getAuthHeaders(),
+          "Content-Type": "application/json-patch+json"
+        }
+      }
+    );
+    
+    return response.data;
+  }
 }
 
+export { type WorkItemUpdate };
 export const azureDevOpsService = new AzureDevOpsService();
