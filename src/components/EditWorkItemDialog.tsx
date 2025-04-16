@@ -1,11 +1,26 @@
-
 import { useState } from "react";
-import { WorkItem, WorkItemUpdate, azureDevOpsService } from "@/services/azureDevOpsService";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  WorkItem,
+  WorkItemUpdate,
+  azureDevOpsService,
+} from "@/services/azureDevOpsService";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAzureDevOps } from "@/contexts/AzureDevOpsContext";
 import { Loader2 } from "lucide-react";
@@ -17,7 +32,12 @@ interface EditWorkItemDialogProps {
   onUpdate: () => void;
 }
 
-const EditWorkItemDialog = ({ workItem, open, onOpenChange, onUpdate }: EditWorkItemDialogProps) => {
+const EditWorkItemDialog = ({
+  workItem,
+  open,
+  onOpenChange,
+  onUpdate,
+}: EditWorkItemDialogProps) => {
   const { toast } = useToast();
   const { selectedProject } = useAzureDevOps();
   const [isLoading, setIsLoading] = useState(false);
@@ -26,17 +46,24 @@ const EditWorkItemDialog = ({ workItem, open, onOpenChange, onUpdate }: EditWork
     description: workItem.fields["System.Description"] || "",
     state: workItem.fields["System.State"],
     assignedTo: workItem.fields["System.AssignedTo"]?.displayName || "",
+    tags: workItem.fields["System.Tags"] || "",
+    priority:
+      workItem.fields["Microsoft.VSTS.Common.Priority"]?.toString() || "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProject) return;
-    
+
     setIsLoading(true);
     try {
-      const result = await azureDevOpsService.updateWorkItem(selectedProject.name, workItem.id, formData);
+      const result = await azureDevOpsService.updateWorkItem(
+        selectedProject.name,
+        workItem.id,
+        formData
+      );
       console.log("Work item updated:", JSON.stringify(result));
-      
+
       toast({
         title: "Success",
         description: "Work item updated successfully",
@@ -63,30 +90,42 @@ const EditWorkItemDialog = ({ workItem, open, onOpenChange, onUpdate }: EditWork
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label htmlFor="title" className="text-sm font-medium">Title</label>
+            <label htmlFor="title" className="text-sm font-medium">
+              Title
+            </label>
             <Input
               id="title"
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, title: e.target.value })
+              }
               required
             />
           </div>
-          
+
           <div className="space-y-2">
-            <label htmlFor="description" className="text-sm font-medium">Description</label>
+            <label htmlFor="description" className="text-sm font-medium">
+              Description
+            </label>
             <Textarea
               id="description"
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
               rows={4}
             />
           </div>
-          
+
           <div className="space-y-2">
-            <label htmlFor="state" className="text-sm font-medium">State</label>
+            <label htmlFor="state" className="text-sm font-medium">
+              State
+            </label>
             <Select
               value={formData.state}
-              onValueChange={(value) => setFormData({ ...formData, state: value })}
+              onValueChange={(value) =>
+                setFormData({ ...formData, state: value })
+              }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select state" />
@@ -99,21 +138,61 @@ const EditWorkItemDialog = ({ workItem, open, onOpenChange, onUpdate }: EditWork
               </SelectContent>
             </Select>
           </div>
-          
+
           <div className="space-y-2">
-            <label htmlFor="assignedTo" className="text-sm font-medium">Assigned To</label>
+            <label htmlFor="assignedTo" className="text-sm font-medium">
+              Assigned To
+            </label>
             <Input
               id="assignedTo"
               value={formData.assignedTo}
-              onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, assignedTo: e.target.value })
+              }
               placeholder="Enter assignee name"
             />
           </div>
-          
+
+          <div className="space-y-2">
+            <label htmlFor="tags" className="text-sm font-medium">
+              Tags (semicolon-separated)
+            </label>
+            <Input
+              id="tags"
+              value={formData.tags}
+              onChange={(e) =>
+                setFormData({ ...formData, tags: e.target.value })
+              }
+              placeholder="Enter tags (e.g., tag1;tag2)"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="priority" className="text-sm font-medium">
+              Priority
+            </label>
+            <Select
+              value={formData.priority}
+              onValueChange={(value) =>
+                setFormData({ ...formData, priority: value })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select priority" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">1 (High)</SelectItem>
+                <SelectItem value="2">2</SelectItem>
+                <SelectItem value="3">3</SelectItem>
+                <SelectItem value="4">4 (Low)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <DialogFooter>
-            <Button 
-              type="button" 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isLoading}
             >

@@ -49,6 +49,8 @@ export interface WorkItemUpdate {
   description?: string;
   state?: string;
   assignedTo?: string;
+  priority?: any;
+  tags?: any;
 }
 
 class AzureDevOpsService {
@@ -61,13 +63,13 @@ class AzureDevOpsService {
 
   getConfig(): AzureDevOpsConfig | null {
     if (this.config) return this.config;
-    
+
     const storedConfig = localStorage.getItem("azureDevOpsConfig");
     if (storedConfig) {
       this.config = JSON.parse(storedConfig);
       return this.config;
     }
-    
+
     return null;
   }
 
@@ -78,7 +80,7 @@ class AzureDevOpsService {
 
   private getAuthHeaders() {
     if (!this.config) throw new Error("Azure DevOps configuration not set");
-    
+
     const token = btoa(`:${this.config.personalAccessToken}`);
     return {
       Authorization: `Basic ${token}`,
@@ -87,114 +89,130 @@ class AzureDevOpsService {
 
   async getProjects(): Promise<Project[]> {
     if (!this.config) throw new Error("Azure DevOps configuration not set");
-    
+
     const response = await axios.get(
       `${BASE_URL}${this.config.organizationName}/_apis/projects?api-version=7.0`,
       { headers: this.getAuthHeaders() }
     );
-    
+
     return response.data.value;
   }
 
-  async getWorkItems(projectName: string, query: string = ""): Promise<WorkItem[]> {
+  async getWorkItems(
+    projectName: string,
+    query: string = ""
+  ): Promise<WorkItem[]> {
     if (!this.config) throw new Error("Azure DevOps configuration not set");
-    
+
     // First get the work item IDs
     const wiql = {
-      query: query || "Select [System.Id] From WorkItems Where [System.TeamProject] = @project Order By [System.ChangedDate] Desc"
+      query:
+        query ||
+        "Select [System.Id] From WorkItems Where [System.TeamProject] = @project Order By [System.ChangedDate] Desc",
     };
-    
+
     const wiqlResponse = await axios.post(
       `${BASE_URL}${this.config.organizationName}/${projectName}/_apis/wit/wiql?api-version=7.0`,
       wiql,
       { headers: this.getAuthHeaders() }
     );
-    
+
     const workItemIds = wiqlResponse.data.workItems.map((item: any) => item.id);
-    
+
     if (workItemIds.length === 0) return [];
-    
+
     // Then get the work item details
     const workItemsResponse = await axios.get(
-      `${BASE_URL}${this.config.organizationName}/_apis/wit/workitems?ids=${workItemIds.join(",")}&$expand=all&api-version=7.0`,
+      `${BASE_URL}${
+        this.config.organizationName
+      }/_apis/wit/workitems?ids=${workItemIds.join(
+        ","
+      )}&$expand=all&api-version=7.0`,
       { headers: this.getAuthHeaders() }
     );
-    
+
     return workItemsResponse.data.value;
   }
 
   async getTeamMembers(projectName: string): Promise<TeamMember[]> {
     if (!this.config) throw new Error("Azure DevOps configuration not set");
-    
+
     const response = await axios.get(
       `${BASE_URL}${this.config.organizationName}/_apis/projects/${projectName}/teams/default/members?api-version=7.0`,
       { headers: this.getAuthHeaders() }
     );
-    
+
     return response.data.value;
   }
 
   async getWorkItemTypes(projectName: string): Promise<string[]> {
     if (!this.config) throw new Error("Azure DevOps configuration not set");
-    
+
     const response = await axios.get(
       `${BASE_URL}${this.config.organizationName}/${projectName}/_apis/wit/workitemtypes?api-version=7.0`,
       { headers: this.getAuthHeaders() }
     );
-    
+
     return response.data.value.map((type: any) => type.name);
   }
 
-  async updateWorkItem(projectName: string, workItemId: number, updates: WorkItemUpdate): Promise<WorkItem> {
+  async updateWorkItem(
+    projectName: string,
+    workItemId: number,
+    updates: WorkItemUpdate
+  ): Promise<WorkItem> {
     if (!this.config) throw new Error("Azure DevOps configuration not set");
-    
+
     const operations = [];
-    
+
     if (updates.title) {
       operations.push({
-        op: "add",
+        op: "replace",
         path: "/fields/System.Title",
-        value: updates.title
+        value: updates.title,
       });
     }
-    
+
     if (updates.description) {
       operations.push({
-        op: "add",
+        op: "replace",
         path: "/fields/System.Description",
-        value: updates.description
+        value: updates.description,
       });
     }
-    
+
     if (updates.state) {
       operations.push({
-        op: "add",
+        op: "replace",
         path: "/fields/System.State",
-        value: updates.state
+        value: updates.state,
       });
     }
-    
+
     if (updates.assignedTo) {
       operations.push({
-        op: "add",
+        op: "replace",
         path: "/fields/System.AssignedTo",
-        value: updates.assignedTo
+        value: updates.assignedTo,
       });
     }
-    
-    console.log("Updating work item with operations:", JSON.stringify(operations));
-    
+
+    console.log(
+      "Updating work item with operations:",
+      JSON.stringify(operations)
+    );
+
     const response = await axios.patch(
       `${BASE_URL}${this.config.organizationName}/_apis/wit/workitems/${workItemId}?api-version=7.0`,
       operations,
       {
         headers: {
           ...this.getAuthHeaders(),
-          "Content-Type": "application/json-patch+json"
-        }
+          "Content-Type": "application/json-patch+json",
+        },
       }
     );
-    
+
     console.log("Update response:", JSON.stringify(response.data));
     return response.data;
   }
