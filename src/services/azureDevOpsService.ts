@@ -218,5 +218,5 @@ class AzureDevOpsService {
   }
 }
 
-export { type WorkItemUpdate };
+// Remove the duplicate export of WorkItemUpdate here
 export const azureDevOpsService = new AzureDevOpsService();
