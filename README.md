@@ -1,26 +1,24 @@
-# Welcome to your Lovable project
+# Azure DevOps Explorer
 
-## Project info
+A React application built with TypeScript that integrates with Azure DevOps to display project data, work items, and dashboards. The application allows you to connect to your Azure DevOps organization, browse projects, view work items, and see analytics.
 
-**URL**: https://lovable.dev/projects/e2cfdfbd-35bc-47c0-b1c9-71e74619a70b
+## Features
 
-## How can I edit this code?
+- **Azure DevOps Authentication**: Securely connect to your Azure DevOps organization using a Personal Access Token
+- **Project Selection**: View and select from all available projects in your organization
+- **Work Items View**: Browse, search, and filter work items by state
+- **Dashboard**: Visualize work item statistics with charts and metrics
+- **Responsive Design**: Works on desktop and mobile devices
 
-There are several ways of editing your application.
+## Getting Started
 
-**Use Lovable**
+### Prerequisites
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/e2cfdfbd-35bc-47c0-b1c9-71e74619a70b) and start prompting.
+- Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- An Azure DevOps account with organization and projects
+- A Personal Access Token (PAT) with read permissions for Work Items and Project/Team
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### Running the Application
 
 ```sh
 # Step 1: Clone the repository using the project's Git URL.
@@ -36,38 +34,45 @@ npm i
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+### How to Get an Azure DevOps Personal Access Token
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+1. Sign in to your Azure DevOps organization (https://dev.azure.com)
+2. Click on your profile picture in the top right corner and select "Personal access tokens"
+3. Click on "New Token"
+4. Give your token a name and select an appropriate expiration
+5. Under "Scopes", select "Custom defined" and grant the following permissions:
+   - Work Items: Read
+   - Project and Team: Read
+6. Click "Create" and copy your token (you won't be able to see it again)
 
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
+## Technologies Used
 
 This project is built with:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- [React](https://reactjs.org/) - UI library
+- [TypeScript](https://www.typescriptlang.org/) - Type-safe JavaScript
+- [Vite](https://vitejs.dev/) - Build tool and development server
+- [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
+- [shadcn/ui](https://ui.shadcn.com/) - UI component library
+- [Recharts](https://recharts.org/) - Charting library for data visualization
+- [Azure DevOps REST API](https://docs.microsoft.com/en-us/rest/api/azure/devops/) - For integration with Azure DevOps
 
-## How can I deploy this project?
+## Security Note
+
+This application stores your Personal Access Token in localStorage for persistence. While convenient, this approach has security limitations. For a production environment, consider using a more secure token management approach.
+
+## Project Structure
+
+- `/src/components` - UI components
+- `/src/contexts` - React context providers
+- `/src/services` - Azure DevOps API service
+- `/src/utils` - Utility functions
+- `/src/pages` - Main application pages
+
+## How to Deploy
 
 Simply open [Lovable](https://lovable.dev/projects/e2cfdfbd-35bc-47c0-b1c9-71e74619a70b) and click on Share -> Publish.
 
-## Can I connect a custom domain to my Lovable project?
+## License
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+This project is open source and available under the MIT License.

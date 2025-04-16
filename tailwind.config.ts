@@ -19,6 +19,13 @@ export default {
 		},
 		extend: {
 			colors: {
+				azure: {
+					blue: '#0078D4',
+					lighterblue: '#50A0DB',
+					darkblue: '#005A9E',
+					gray: '#F3F3F3',
+					darkgray: '#EAEAEA',
+				},
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',
