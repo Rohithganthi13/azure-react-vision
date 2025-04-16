@@ -25,6 +25,7 @@ const EditWorkItemDialog = ({ workItem, open, onOpenChange, onUpdate }: EditWork
     title: workItem.fields["System.Title"],
     description: workItem.fields["System.Description"] || "",
     state: workItem.fields["System.State"],
+    assignedTo: workItem.fields["System.AssignedTo"]?.displayName || "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,7 +34,9 @@ const EditWorkItemDialog = ({ workItem, open, onOpenChange, onUpdate }: EditWork
     
     setIsLoading(true);
     try {
-      await azureDevOpsService.updateWorkItem(selectedProject.name, workItem.id, formData);
+      const result = await azureDevOpsService.updateWorkItem(selectedProject.name, workItem.id, formData);
+      console.log("Work item updated:", JSON.stringify(result));
+      
       toast({
         title: "Success",
         description: "Work item updated successfully",
@@ -54,7 +57,7 @@ const EditWorkItemDialog = ({ workItem, open, onOpenChange, onUpdate }: EditWork
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
           <DialogTitle>Edit Work Item #{workItem.id}</DialogTitle>
         </DialogHeader>
@@ -95,6 +98,16 @@ const EditWorkItemDialog = ({ workItem, open, onOpenChange, onUpdate }: EditWork
                 <SelectItem value="Closed">Closed</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="assignedTo" className="text-sm font-medium">Assigned To</label>
+            <Input
+              id="assignedTo"
+              value={formData.assignedTo}
+              onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
+              placeholder="Enter assignee name"
+            />
           </div>
           
           <DialogFooter>

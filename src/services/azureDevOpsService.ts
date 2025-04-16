@@ -1,3 +1,4 @@
+
 import axios from "axios";
 
 // Azure DevOps API endpoints
@@ -33,6 +34,7 @@ export interface WorkItem {
     "System.WorkItemType": string;
     "System.CreatedDate": string;
     "System.ChangedDate": string;
+    [key: string]: any; // Allow any additional fields from Azure DevOps
   };
 }
 
@@ -43,7 +45,7 @@ export interface TeamMember {
   imageUrl?: string;
 }
 
-interface WorkItemUpdate {
+export interface WorkItemUpdate {
   title?: string;
   description?: string;
   state?: string;
@@ -181,6 +183,8 @@ class AzureDevOpsService {
       });
     }
     
+    console.log("Updating work item with operations:", JSON.stringify(operations));
+    
     const response = await axios.patch(
       `${BASE_URL}${this.config.organizationName}/_apis/wit/workitems/${workItemId}?api-version=7.0`,
       operations,
@@ -192,7 +196,25 @@ class AzureDevOpsService {
       }
     );
     
+    console.log("Update response:", JSON.stringify(response.data));
     return response.data;
+  }
+
+  // Helper method to get a work item for storage in a database
+  formatWorkItemForStorage(workItem: WorkItem) {
+    const { fields } = workItem;
+    return {
+      id: workItem.id,
+      title: fields["System.Title"],
+      description: fields["System.Description"] || "",
+      state: fields["System.State"],
+      workItemType: fields["System.WorkItemType"],
+      createdDate: fields["System.CreatedDate"],
+      changedDate: fields["System.ChangedDate"],
+      createdBy: fields["System.CreatedBy"]?.displayName,
+      assignedTo: fields["System.AssignedTo"]?.displayName || null,
+      // Add any other fields you want to store
+    };
   }
 }
 
