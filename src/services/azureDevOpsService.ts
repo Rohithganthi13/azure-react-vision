@@ -1,4 +1,3 @@
-
 import axios from "axios";
 
 // Azure DevOps API endpoints
@@ -206,14 +205,14 @@ class AzureDevOpsService {
     return {
       id: workItem.id,
       title: fields["System.Title"],
-      description: fields["System.Description"] || "",
-      state: fields["System.State"],
       workItemType: fields["System.WorkItemType"],
+      state: fields["System.State"],
+      assignedTo: fields["System.AssignedTo"]?.displayName || null,
       createdDate: fields["System.CreatedDate"],
       changedDate: fields["System.ChangedDate"],
-      createdBy: fields["System.CreatedBy"]?.displayName,
-      assignedTo: fields["System.AssignedTo"]?.displayName || null,
-      // Add any other fields you want to store
+      priority: fields["Microsoft.VSTS.Common.Priority"],
+      tags: fields["System.Tags"],
+      description: fields["System.Description"] || "",
     };
   }
 }

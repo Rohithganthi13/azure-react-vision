@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAzureDevOps } from "@/contexts/AzureDevOpsContext";
 import { WorkItem } from "@/services/azureDevOpsService";
@@ -162,7 +161,7 @@ const WorkItemCard = ({ workItem }: WorkItemCardProps) => {
   const [expanded, setExpanded] = useState(false);
   const { refreshWorkItems } = useAzureDevOps();
   const { fields } = workItem;
-  
+
   const getStateBadgeColor = (state: string) => {
     switch (state.toLowerCase()) {
       case "new":
@@ -195,21 +194,6 @@ const WorkItemCard = ({ workItem }: WorkItemCardProps) => {
       .toUpperCase();
   };
 
-  // Create a clean JSON object for database storage
-  const getWorkItemForStorage = () => {
-    return {
-      id: workItem.id,
-      title: fields["System.Title"],
-      description: fields["System.Description"] || "",
-      state: fields["System.State"],
-      workItemType: fields["System.WorkItemType"],
-      createdDate: fields["System.CreatedDate"],
-      changedDate: fields["System.ChangedDate"],
-      createdBy: fields["System.CreatedBy"]?.displayName,
-      assignedTo: fields["System.AssignedTo"]?.displayName || null,
-    };
-  };
-  
   return (
     <Card className="hover:bg-accent/50 transition-colors">
       <CardContent className="p-4">
@@ -238,9 +222,13 @@ const WorkItemCard = ({ workItem }: WorkItemCardProps) => {
               </Button>
             </div>
             <h4 className="font-medium text-lg">{fields["System.Title"]}</h4>
-            <p className="text-sm text-muted-foreground">
-              {fields["System.WorkItemType"]} • Created {formatDate(fields["System.CreatedDate"])}
-            </p>
+            <div className="text-sm text-muted-foreground">
+              <span>{fields["System.WorkItemType"]}</span>
+              {fields["Microsoft.VSTS.Common.Priority"] && (
+                <span> • Priority: {fields["Microsoft.VSTS.Common.Priority"]}</span>
+              )}
+              <span> • Created {formatDate(fields["System.CreatedDate"])}</span>
+            </div>
             
             {fields["System.Description"] && (
               <div className="mt-2">
@@ -249,6 +237,14 @@ const WorkItemCard = ({ workItem }: WorkItemCardProps) => {
                   className="text-sm mt-1 prose max-w-none" 
                   dangerouslySetInnerHTML={{ __html: fields["System.Description"] || "" }}
                 />
+              </div>
+            )}
+
+            {fields["System.Tags"] && (
+              <div className="mt-2 flex gap-2 flex-wrap">
+                {fields["System.Tags"].split(';').map((tag: string) => (
+                  <Badge key={tag} variant="secondary">{tag.trim()}</Badge>
+                ))}
               </div>
             )}
           </div>
@@ -261,39 +257,6 @@ const WorkItemCard = ({ workItem }: WorkItemCardProps) => {
             </Avatar>
           )}
         </div>
-        
-        {expanded && (
-          <div className="mt-4 border-t pt-4">
-            <h5 className="font-medium mb-2">All Fields</h5>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Field</TableHead>
-                  <TableHead>Value</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {Object.entries(fields).map(([key, value]) => (
-                  <TableRow key={key}>
-                    <TableCell className="font-medium">{key}</TableCell>
-                    <TableCell>
-                      {typeof value === 'object' 
-                        ? JSON.stringify(value)
-                        : String(value)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            
-            <div className="mt-4">
-              <h5 className="font-medium mb-2">JSON for Database Storage</h5>
-              <pre className="bg-muted p-2 rounded-md text-xs overflow-auto">
-                {JSON.stringify(getWorkItemForStorage(), null, 2)}
-              </pre>
-            </div>
-          </div>
-        )}
       </CardContent>
       
       <EditWorkItemDialog
