@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useAzureDevOps } from "@/contexts/AzureDevOpsContext";
 import { 
@@ -5,14 +6,15 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle,
-  DialogFooter
+  DialogFooter,
+  DialogDescription
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Info, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { FieldDefinition } from "@/services/azureDevOpsService";
+import { FieldDefinition, WorkItem } from "@/services/azureDevOpsService";
 
 interface FieldMappingDialogProps {
   open: boolean;
@@ -28,6 +30,7 @@ interface MappingField {
 interface FieldMapping {
   referenceName: string;
   displayName: string;
+  sampleValue?: string;
 }
 
 interface Mapping {
@@ -59,25 +62,26 @@ const relevantFieldTypes = [
 ];
 
 const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenChange }) => {
-  const { azureFields, fetchAzureFields, selectedProject } = useAzureDevOps();
+  const { azureFields, fetchAzureFields, selectedProject, workItems } = useAzureDevOps();
   const [activeTab, setActiveTab] = useState("import");
   const [selectedPreset, setSelectedPreset] = useState("");
   const [mappings, setMappings] = useState<Record<string, FieldMapping>>({
-    title: { referenceName: "", displayName: "" },
-    description: { referenceName: "", displayName: "" },
-    acceptanceCriteria: { referenceName: "", displayName: "" },
-    additionalInfo: { referenceName: "", displayName: "" }
+    title: { referenceName: "", displayName: "", sampleValue: "" },
+    description: { referenceName: "", displayName: "", sampleValue: "" },
+    acceptanceCriteria: { referenceName: "", displayName: "", sampleValue: "" },
+    additionalInfo: { referenceName: "", displayName: "", sampleValue: "" }
   });
   const [presets, setPresets] = useState<Mapping[]>([
     { id: "default", name: "Default Mapping", fields: {
-        title: { referenceName: "System.Title", displayName: "Title" },
-        description: { referenceName: "System.Description", displayName: "Description" },
-        acceptanceCriteria: { referenceName: "Microsoft.VSTS.Common.AcceptanceCriteria", displayName: "Acceptance Criteria" },
-        additionalInfo: { referenceName: "System.AdditionalInfo", displayName: "Additional Info" }
+        title: { referenceName: "System.Title", displayName: "Title", sampleValue: "" },
+        description: { referenceName: "System.Description", displayName: "Description", sampleValue: "" },
+        acceptanceCriteria: { referenceName: "Microsoft.VSTS.Common.AcceptanceCriteria", displayName: "Acceptance Criteria", sampleValue: "" },
+        additionalInfo: { referenceName: "System.AdditionalInfo", displayName: "Additional Info", sampleValue: "" }
       }
     }
   ]);
   const { toast } = useToast();
+  const [sampleWorkItem, setSampleWorkItem] = useState<WorkItem | null>(null);
   
   // Load fields when dialog opens
   useEffect(() => {
@@ -85,6 +89,13 @@ const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenCha
       fetchAzureFields();
     }
   }, [open, azureFields, fetchAzureFields, selectedProject]);
+
+  // Set a sample work item if available to display values
+  useEffect(() => {
+    if (workItems && workItems.length > 0) {
+      setSampleWorkItem(workItems[0]);
+    }
+  }, [workItems]);
 
   // Load saved presets from localStorage
   useEffect(() => {
@@ -106,30 +117,83 @@ const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenCha
     }
   }, []);
 
+  // When a sample work item is available or mappings change, update sample values
+  useEffect(() => {
+    if (sampleWorkItem) {
+      setMappings(prev => {
+        const updated = { ...prev };
+        Object.entries(updated).forEach(([key, mapping]) => {
+          if (mapping.referenceName && sampleWorkItem.fields[mapping.referenceName] !== undefined) {
+            const fieldValue = sampleWorkItem.fields[mapping.referenceName];
+            // Handle different field value types
+            let displayValue = "";
+            if (typeof fieldValue === 'object' && fieldValue !== null) {
+              if (fieldValue.displayName) {
+                displayValue = fieldValue.displayName;
+              } else {
+                displayValue = JSON.stringify(fieldValue);
+              }
+            } else if (fieldValue !== null) {
+              displayValue = String(fieldValue);
+            }
+            updated[key] = { 
+              ...mapping, 
+              sampleValue: displayValue
+            };
+          } else {
+            // Reset sample value if no mapping or value is found
+            updated[key] = { 
+              ...mapping, 
+              sampleValue: "" 
+            };
+          }
+        });
+        return updated;
+      });
+    }
+  }, [sampleWorkItem, mappings.title.referenceName, mappings.description.referenceName, 
+       mappings.acceptanceCriteria.referenceName, mappings.additionalInfo.referenceName]);
+
   const handleMappingChange = (taskField: string, azureFieldRef: string) => {
     // Find the display name for the selected reference name
     const selectedField = azureFields?.find(field => field.referenceName === azureFieldRef);
     const displayName = selectedField ? selectedField.name : azureFieldRef;
     
+    // Get sample value from the work item if available
+    let sampleValue = "";
+    if (sampleWorkItem && sampleWorkItem.fields[azureFieldRef] !== undefined) {
+      const fieldValue = sampleWorkItem.fields[azureFieldRef];
+      if (typeof fieldValue === 'object' && fieldValue !== null) {
+        if (fieldValue.displayName) {
+          sampleValue = fieldValue.displayName;
+        } else {
+          sampleValue = JSON.stringify(fieldValue);
+        }
+      } else if (fieldValue !== null) {
+        sampleValue = String(fieldValue);
+      }
+    }
+    
     setMappings(prev => ({
       ...prev,
       [taskField]: {
         referenceName: azureFieldRef,
-        displayName: displayName
+        displayName: displayName,
+        sampleValue: sampleValue
       }
     }));
   };
 
   const handleSaveMapping = () => {
     // Create a more user-friendly version of the mapping for logging
-    // This now uses display names instead of reference names
+    // This now uses actual field values from the sample work item
     const displayMapping = Object.entries(mappings).reduce((acc, [key, mapping]) => {
-      acc[key] = mapping.displayName || mapping.referenceName || "";
+      acc[key] = mapping.sampleValue || mapping.displayName || mapping.referenceName || "";
       return acc;
     }, {} as Record<string, string>);
     
     // Log the display mapping and full mapping
-    console.log("Saving mapping (display names):", JSON.stringify(displayMapping, null, 2));
+    console.log("Saving mapping (actual values):", JSON.stringify(displayMapping, null, 2));
     console.log("Full mapping data:", JSON.stringify(mappings, null, 2));
     
     // Save the current preset to localStorage if one is selected
@@ -224,6 +288,9 @@ const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenCha
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Azure DevOps Field Mapping</DialogTitle>
+          <DialogDescription>
+            Map fields between your Azure DevOps project and this application
+          </DialogDescription>
         </DialogHeader>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -265,6 +332,7 @@ const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenCha
               <h3 className="text-lg font-medium">Field Mapping</h3>
               <p className="text-sm text-muted-foreground">
                 Map Azure DevOps fields to our required task fields for importing.
+                {sampleWorkItem && <span> Using work item #{sampleWorkItem.id} for sample values.</span>}
               </p>
               
               <div className="space-y-6">
@@ -304,6 +372,13 @@ const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenCha
                         </SelectContent>
                       </Select>
                     </div>
+                    
+                    {mappings[field.id]?.sampleValue && (
+                      <div className="mt-1 text-sm text-muted-foreground">
+                        <span className="font-medium">Sample value: </span>
+                        <span>{mappings[field.id].sampleValue}</span>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -314,6 +389,7 @@ const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenCha
             <h3 className="text-lg font-medium">Export Mapping Configuration</h3>
             <p className="text-sm text-muted-foreground">
               Configure how your task fields map to Azure DevOps fields when exporting.
+              {sampleWorkItem && <span> Using work item #{sampleWorkItem.id} for sample values.</span>}
             </p>
             
             <div className="space-y-6">
@@ -349,6 +425,13 @@ const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenCha
                       </SelectContent>
                     </Select>
                   </div>
+                  
+                  {mappings[field.id]?.sampleValue && (
+                    <div className="mt-1 text-sm text-muted-foreground">
+                      <span className="font-medium">Sample value: </span>
+                      <span>{mappings[field.id].sampleValue}</span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
