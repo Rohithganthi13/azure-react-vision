@@ -26,10 +26,15 @@ interface MappingField {
   description: string;
 }
 
+interface FieldMapping {
+  referenceName: string;
+  displayName: string;
+}
+
 interface Mapping {
   id: string;
   name: string;
-  fields: Record<string, string>;
+  fields: Record<string, FieldMapping>;
 }
 
 const taskFields: MappingField[] = [
@@ -39,22 +44,40 @@ const taskFields: MappingField[] = [
   { id: "additionalInfo", name: "Additional Information", description: "Maps to any additional information or context about the task" },
 ];
 
+// Common fields used in most projects - used to filter the dropdown options
+const commonFieldTypes = [
+  "System.Title",
+  "System.Description",
+  "System.State",
+  "System.AssignedTo",
+  "System.CreatedBy",
+  "System.WorkItemType",
+  "System.Tags",
+  "Microsoft.VSTS.Common.AcceptanceCriteria",
+  "Microsoft.VSTS.Common.Priority",
+  "Microsoft.VSTS.Common.BusinessValue",
+  "Microsoft.VSTS.Common.ValueArea",
+  "System.AreaPath",
+  "System.IterationPath",
+  "System.Reason"
+];
+
 const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenChange }) => {
   const { azureFields, fetchAzureFields, selectedProject } = useAzureDevOps();
   const [activeTab, setActiveTab] = useState("import");
   const [selectedPreset, setSelectedPreset] = useState("");
-  const [mappings, setMappings] = useState<Record<string, string>>({
-    title: "",
-    description: "",
-    acceptanceCriteria: "",
-    additionalInfo: ""
+  const [mappings, setMappings] = useState<Record<string, FieldMapping>>({
+    title: { referenceName: "", displayName: "" },
+    description: { referenceName: "", displayName: "" },
+    acceptanceCriteria: { referenceName: "", displayName: "" },
+    additionalInfo: { referenceName: "", displayName: "" }
   });
   const [presets, setPresets] = useState<Mapping[]>([
     { id: "default", name: "Default Mapping", fields: {
-        title: "System.Title",
-        description: "System.Description",
-        acceptanceCriteria: "Microsoft.VSTS.Common.AcceptanceCriteria",
-        additionalInfo: "System.AdditionalInfo"
+        title: { referenceName: "System.Title", displayName: "Title" },
+        description: { referenceName: "System.Description", displayName: "Description" },
+        acceptanceCriteria: { referenceName: "Microsoft.VSTS.Common.AcceptanceCriteria", displayName: "Acceptance Criteria" },
+        additionalInfo: { referenceName: "System.AdditionalInfo", displayName: "Additional Info" }
       }
     }
   ]);
@@ -74,7 +97,12 @@ const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenCha
       try {
         const parsedPresets = JSON.parse(savedPresets);
         if (Array.isArray(parsedPresets) && parsedPresets.length > 0) {
-          setPresets([...presets, ...parsedPresets]);
+          setPresets(prev => {
+            // Filter out duplicates by ID
+            const existingIds = prev.map(p => p.id);
+            const newPresets = parsedPresets.filter(p => !existingIds.includes(p.id));
+            return [...prev, ...newPresets];
+          });
         }
       } catch (e) {
         console.error('Failed to parse saved presets:', e);
@@ -82,17 +110,30 @@ const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenCha
     }
   }, []);
 
-  const handleMappingChange = (taskField: string, azureField: string) => {
+  const handleMappingChange = (taskField: string, azureFieldRef: string) => {
+    // Find the display name for the selected reference name
+    const selectedField = azureFields?.find(field => field.referenceName === azureFieldRef);
+    const displayName = selectedField ? selectedField.name : azureFieldRef;
+    
     setMappings(prev => ({
       ...prev,
-      [taskField]: azureField
+      [taskField]: {
+        referenceName: azureFieldRef,
+        displayName: displayName
+      }
     }));
   };
 
   const handleSaveMapping = () => {
-    // Save the current mapping and log it
-    const mappingJSON = JSON.stringify(mappings, null, 2);
-    console.log("Saving mapping:", mappingJSON);
+    // Create a more user-friendly version of the mapping for logging
+    const displayMapping = Object.entries(mappings).reduce((acc, [key, mapping]) => {
+      acc[key] = mapping.displayName || mapping.referenceName || "";
+      return acc;
+    }, {} as Record<string, string>);
+    
+    // Log the display mapping and full mapping
+    console.log("Saving mapping (display names):", JSON.stringify(displayMapping, null, 2));
+    console.log("Full mapping data:", JSON.stringify(mappings, null, 2));
     
     // Save the current preset to localStorage if one is selected
     if (selectedPreset) {
@@ -167,8 +208,19 @@ const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenCha
     }
   };
   
+  // Filter the Azure fields to only show common ones to prevent dropdown overload
+  const filteredAzureFields = Array.isArray(azureFields) 
+    ? azureFields.filter(field => 
+        commonFieldTypes.includes(field.referenceName) || 
+        field.name.toLowerCase().includes('description') ||
+        field.name.toLowerCase().includes('title') ||
+        field.name.toLowerCase().includes('acceptance') ||
+        field.name.toLowerCase().includes('additional')
+      )
+    : [];
+
   // Check if we have fields to populate in the dropdown
-  const hasAzureFields = Array.isArray(azureFields) && azureFields.length > 0;
+  const hasAzureFields = filteredAzureFields.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -234,7 +286,7 @@ const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenCha
                       <ArrowRight className="h-4 w-4" />
                       
                       <Select 
-                        value={mappings[field.id]} 
+                        value={mappings[field.id]?.referenceName || ""} 
                         onValueChange={(value) => handleMappingChange(field.id, value)}
                       >
                         <SelectTrigger className="w-full">
@@ -242,7 +294,7 @@ const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenCha
                         </SelectTrigger>
                         <SelectContent className="max-h-[300px]">
                           {hasAzureFields ? (
-                            azureFields.map((azureField: FieldDefinition) => (
+                            filteredAzureFields.map((azureField: FieldDefinition) => (
                               <SelectItem key={azureField.referenceName} value={azureField.referenceName}>
                                 {azureField.name}
                               </SelectItem>
@@ -279,7 +331,7 @@ const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenCha
                     <ArrowRight className="h-4 w-4" />
                     
                     <Select 
-                      value={mappings[field.id]} 
+                      value={mappings[field.id]?.referenceName || ""} 
                       onValueChange={(value) => handleMappingChange(field.id, value)}
                     >
                       <SelectTrigger className="w-full">
@@ -287,7 +339,7 @@ const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenCha
                       </SelectTrigger>
                       <SelectContent className="max-h-[300px]">
                         {hasAzureFields ? (
-                          azureFields.map((azureField: FieldDefinition) => (
+                          filteredAzureFields.map((azureField: FieldDefinition) => (
                             <SelectItem key={azureField.referenceName} value={azureField.referenceName}>
                               {azureField.name}
                             </SelectItem>
