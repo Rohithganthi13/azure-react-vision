@@ -11,8 +11,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Info, ArrowRight } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { FieldDefinition } from "@/services/azureDevOpsService";
 
 interface FieldMappingDialogProps {
   open: boolean;
@@ -39,7 +40,7 @@ const taskFields: MappingField[] = [
 ];
 
 const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenChange }) => {
-  const { azureFields, fetchAzureFields } = useAzureDevOps();
+  const { azureFields, fetchAzureFields, selectedProject } = useAzureDevOps();
   const [activeTab, setActiveTab] = useState("import");
   const [selectedPreset, setSelectedPreset] = useState("");
   const [mappings, setMappings] = useState<Record<string, string>>({
@@ -57,14 +58,29 @@ const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenCha
       }
     }
   ]);
+  const { toast } = useToast();
   
+  // Load fields when dialog opens
   useEffect(() => {
-    if (open && !azureFields.length) {
-      // This assumes there's a method to fetch available fields in the context
-      // You may need to add this to the AzureDevOpsContext
-      fetchAzureFields && fetchAzureFields();
+    if (open && selectedProject && (!azureFields || azureFields.length === 0)) {
+      fetchAzureFields();
     }
-  }, [open, azureFields, fetchAzureFields]);
+  }, [open, azureFields, fetchAzureFields, selectedProject]);
+
+  // Load saved presets from localStorage
+  useEffect(() => {
+    const savedPresets = localStorage.getItem('fieldMappingPresets');
+    if (savedPresets) {
+      try {
+        const parsedPresets = JSON.parse(savedPresets);
+        if (Array.isArray(parsedPresets) && parsedPresets.length > 0) {
+          setPresets([...presets, ...parsedPresets]);
+        }
+      } catch (e) {
+        console.error('Failed to parse saved presets:', e);
+      }
+    }
+  }, []);
 
   const handleMappingChange = (taskField: string, azureField: string) => {
     setMappings(prev => ({
@@ -74,9 +90,24 @@ const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenCha
   };
 
   const handleSaveMapping = () => {
-    // Save the current mapping
-    // This would typically involve sending to a backend or storing in local storage
-    console.log("Saving mapping:", mappings);
+    // Save the current mapping and log it
+    const mappingJSON = JSON.stringify(mappings, null, 2);
+    console.log("Saving mapping:", mappingJSON);
+    
+    // Save the current preset to localStorage if one is selected
+    if (selectedPreset) {
+      const updatedPresets = presets.map(preset => 
+        preset.id === selectedPreset ? { ...preset, fields: { ...mappings } } : preset
+      );
+      setPresets(updatedPresets);
+      localStorage.setItem('fieldMappingPresets', JSON.stringify(updatedPresets));
+    }
+    
+    toast({
+      title: "Mapping Saved",
+      description: "Your field mapping has been saved successfully.",
+    });
+    
     onOpenChange(false);
   };
 
@@ -84,6 +115,10 @@ const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenCha
     const preset = presets.find(p => p.id === selectedPreset);
     if (preset) {
       setMappings(preset.fields);
+      toast({
+        title: "Preset Loaded",
+        description: `Loaded mapping preset: ${preset.name}`,
+      });
     }
   };
 
@@ -101,17 +136,39 @@ const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenCha
         fields: {...mappings}
       };
       
-      setPresets([...presets, newPreset]);
+      const updatedPresets = [...presets, newPreset];
+      setPresets(updatedPresets);
       setSelectedPreset(newId);
+      
+      // Save to localStorage
+      localStorage.setItem('fieldMappingPresets', JSON.stringify(updatedPresets));
+      
+      toast({
+        title: "Preset Saved",
+        description: `Saved new mapping preset: ${name}`,
+      });
     }
   };
 
   const handleDeletePreset = () => {
     if (selectedPreset) {
-      setPresets(presets.filter(p => p.id !== selectedPreset));
+      const presetName = presets.find(p => p.id === selectedPreset)?.name;
+      const updatedPresets = presets.filter(p => p.id !== selectedPreset);
+      setPresets(updatedPresets);
       setSelectedPreset("");
+      
+      // Save to localStorage
+      localStorage.setItem('fieldMappingPresets', JSON.stringify(updatedPresets));
+      
+      toast({
+        title: "Preset Deleted",
+        description: `Deleted mapping preset: ${presetName}`,
+      });
     }
   };
+  
+  // Check if we have fields to populate in the dropdown
+  const hasAzureFields = Array.isArray(azureFields) && azureFields.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -183,16 +240,18 @@ const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenCha
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder={`Select Azure DevOps field for ${field.name}`} />
                         </SelectTrigger>
-                        <SelectContent>
-                          {/* This should be dynamically populated from Azure DevOps API */}
-                          <SelectItem value="System.Title">Title</SelectItem>
-                          <SelectItem value="System.Description">Description</SelectItem>
-                          <SelectItem value="Microsoft.VSTS.Common.AcceptanceCriteria">Acceptance Criteria</SelectItem>
-                          <SelectItem value="System.AdditionalInfo">Additional Info</SelectItem>
-                          <SelectItem value="System.Tags">Tags</SelectItem>
-                          <SelectItem value="System.Priority">Priority</SelectItem>
-                          <SelectItem value="System.AssignedTo">Assigned To</SelectItem>
-                          {/* Add more fields as needed */}
+                        <SelectContent className="max-h-[300px]">
+                          {hasAzureFields ? (
+                            azureFields.map((azureField: FieldDefinition) => (
+                              <SelectItem key={azureField.referenceName} value={azureField.referenceName}>
+                                {azureField.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="loading" disabled>
+                              Loading fields...
+                            </SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -208,7 +267,6 @@ const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenCha
               Configure how your task fields map to Azure DevOps fields when exporting.
             </p>
             
-            {/* Similar to import but reversed mapping direction */}
             <div className="space-y-6">
               {taskFields.map(field => (
                 <div key={field.id} className="grid gap-2">
@@ -227,14 +285,18 @@ const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenCha
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder={`Select Azure DevOps field for ${field.name}`} />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="System.Title">Title</SelectItem>
-                        <SelectItem value="System.Description">Description</SelectItem>
-                        <SelectItem value="Microsoft.VSTS.Common.AcceptanceCriteria">Acceptance Criteria</SelectItem>
-                        <SelectItem value="System.AdditionalInfo">Additional Info</SelectItem>
-                        <SelectItem value="System.Tags">Tags</SelectItem>
-                        <SelectItem value="System.Priority">Priority</SelectItem>
-                        <SelectItem value="System.AssignedTo">Assigned To</SelectItem>
+                      <SelectContent className="max-h-[300px]">
+                        {hasAzureFields ? (
+                          azureFields.map((azureField: FieldDefinition) => (
+                            <SelectItem key={azureField.referenceName} value={azureField.referenceName}>
+                              {azureField.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="loading" disabled>
+                            Loading fields...
+                          </SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
