@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { 
   azureDevOpsService, 
@@ -5,6 +6,7 @@ import {
   Project, 
   WorkItem
 } from "@/services/azureDevOpsService";
+import { useToast } from "@/hooks/use-toast";
 
 interface AzureDevOpsContextType {
   isAuthenticated: boolean;
@@ -31,6 +33,7 @@ export const AzureDevOpsProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [workItems, setWorkItems] = useState<WorkItem[]>([]);
   const [azureFields, setAzureFields] = useState<any[]>([]);
+  const { toast } = useToast();
 
   useEffect(() => {
     const config = azureDevOpsService.getConfig();
@@ -109,7 +112,18 @@ export const AzureDevOpsProvider: React.FC<{ children: ReactNode }> = ({ childre
     try {
       if (!selectedProject) return;
       
-      const fields = await azureDevOpsService.getWorkItemFields(selectedProject.name);
+      // Check if the method exists in the service
+      if (typeof azureDevOpsService.getFields !== 'function') {
+        console.error("getFields method is not available in azureDevOpsService");
+        toast({
+          title: "Error",
+          description: "Failed to fetch field definitions - method not available",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const fields = await azureDevOpsService.getFields(selectedProject.name);
       setAzureFields(fields);
     } catch (error) {
       console.error("Error fetching Azure DevOps fields:", error);
