@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { 
   azureDevOpsService, 
@@ -14,6 +13,8 @@ interface AzureDevOpsContextType {
   projects: Project[];
   selectedProject: Project | null;
   workItems: WorkItem[];
+  azureFields: any[];
+  fetchAzureFields: () => Promise<void>;
   login: (config: AzureDevOpsConfig) => Promise<void>;
   logout: () => void;
   selectProject: (project: Project) => void;
@@ -29,9 +30,9 @@ export const AzureDevOpsProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [workItems, setWorkItems] = useState<WorkItem[]>([]);
+  const [azureFields, setAzureFields] = useState<any[]>([]);
 
   useEffect(() => {
-    // Check if we have stored credentials
     const config = azureDevOpsService.getConfig();
     if (config) {
       loadProjects();
@@ -104,6 +105,22 @@ export const AzureDevOpsProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
   };
 
+  const fetchAzureFields = async () => {
+    try {
+      if (!selectedProject) return;
+      
+      const fields = await azureDevOpsService.getWorkItemFields(selectedProject.name);
+      setAzureFields(fields);
+    } catch (error) {
+      console.error("Error fetching Azure DevOps fields:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch field definitions",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <AzureDevOpsContext.Provider
       value={{
@@ -113,6 +130,8 @@ export const AzureDevOpsProvider: React.FC<{ children: ReactNode }> = ({ childre
         projects,
         selectedProject,
         workItems,
+        azureFields,
+        fetchAzureFields,
         login,
         logout,
         selectProject,

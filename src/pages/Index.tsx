@@ -1,12 +1,29 @@
+
 import { useAzureDevOps } from "@/contexts/AzureDevOpsContext";
 import LoginForm from "@/components/LoginForm";
 import Header from "@/components/Header";
 import WorkItemsList from "@/components/WorkItemsList";
 import Dashboard from "@/components/Dashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Import, Export } from "lucide-react";
+import { useState } from "react";
+import FieldMappingDialog from "@/components/FieldMappingDialog";
 
 const Index = () => {
   const { isAuthenticated, isLoading } = useAzureDevOps();
+  const [isMappingOpen, setIsMappingOpen] = useState(false);
+  const [mappingMode, setMappingMode] = useState<"import" | "export">("import");
+
+  const handleOpenImportMapping = () => {
+    setMappingMode("import");
+    setIsMappingOpen(true);
+  };
+
+  const handleOpenExportMapping = () => {
+    setMappingMode("export");
+    setIsMappingOpen(true);
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -21,20 +38,39 @@ const Index = () => {
             <LoginForm />
           </div>
         ) : (
-          <Tabs defaultValue="dashboard" className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-              <TabsTrigger value="workItems">Work Items</TabsTrigger>
-            </TabsList>
+          <>
+            <div className="flex justify-end mb-4 gap-2">
+              <Button variant="outline" onClick={handleOpenImportMapping}>
+                <Import className="mr-2 h-4 w-4" />
+                Import
+              </Button>
+              <Button variant="outline" onClick={handleOpenExportMapping}>
+                <Export className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+            </div>
 
-            <TabsContent value="dashboard" className="space-y-6">
-              <Dashboard />
-            </TabsContent>
+            <Tabs defaultValue="dashboard" className="space-y-6">
+              <TabsList>
+                <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+                <TabsTrigger value="workItems">Work Items</TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="workItems" className="space-y-6">
-              <WorkItemsList />
-            </TabsContent>
-          </Tabs>
+              <TabsContent value="dashboard" className="space-y-6">
+                <Dashboard />
+              </TabsContent>
+
+              <TabsContent value="workItems" className="space-y-6">
+                <WorkItemsList />
+              </TabsContent>
+            </Tabs>
+            
+            {/* Field Mapping Dialog */}
+            <FieldMappingDialog 
+              open={isMappingOpen} 
+              onOpenChange={setIsMappingOpen} 
+            />
+          </>
         )}
       </main>
     </div>
