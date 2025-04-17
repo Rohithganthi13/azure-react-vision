@@ -6,7 +6,7 @@ import WorkItemsList from "@/components/WorkItemsList";
 import Dashboard from "@/components/Dashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Import, FileExport } from "lucide-react";
+import { Import, FileText } from "lucide-react";
 import { useState } from "react";
 import FieldMappingDialog from "@/components/FieldMappingDialog";
 
@@ -45,7 +45,7 @@ const Index = () => {
                 Import
               </Button>
               <Button variant="outline" onClick={handleOpenExportMapping}>
-                <FileExport className="mr-2 h-4 w-4" />
+                <FileText className="mr-2 h-4 w-4" />
                 Export
               </Button>
             </div>

@@ -53,6 +53,14 @@ export interface WorkItemUpdate {
   tags?: any;
 }
 
+export interface FieldDefinition {
+  name: string;
+  referenceName: string;
+  description?: string;
+  type: string;
+  usage?: string;
+}
+
 class AzureDevOpsService {
   private config: AzureDevOpsConfig | null = null;
 
@@ -156,6 +164,23 @@ class AzureDevOpsService {
     return response.data.value.map((type: any) => type.name);
   }
 
+  async getFields(projectName: string): Promise<FieldDefinition[]> {
+    if (!this.config) throw new Error("Azure DevOps configuration not set");
+
+    const response = await axios.get(
+      `${BASE_URL}${this.config.organizationName}/${projectName}/_apis/wit/fields?api-version=7.0`,
+      { headers: this.getAuthHeaders() }
+    );
+
+    return response.data.value.map((field: any) => ({
+      name: field.name,
+      referenceName: field.referenceName,
+      description: field.description,
+      type: field.type,
+      usage: field.usage
+    }));
+  }
+
   async updateWorkItem(
     projectName: string,
     workItemId: number,
@@ -235,5 +260,4 @@ class AzureDevOpsService {
   }
 }
 
-// Remove the duplicate export of WorkItemUpdate here
 export const azureDevOpsService = new AzureDevOpsService();
