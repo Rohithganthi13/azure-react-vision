@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useAzureDevOps } from "@/contexts/AzureDevOpsContext";
 import { 
@@ -44,8 +43,9 @@ const taskFields: MappingField[] = [
   { id: "additionalInfo", name: "Additional Information", description: "Maps to any additional information or context about the task" },
 ];
 
-// Common fields used in most projects - used to filter the dropdown options
-const commonFieldTypes = [
+// Fields that are actually shown in the WorkItemDetails component
+const relevantFieldTypes = [
+  "System.Id",
   "System.Title",
   "System.Description",
   "System.State",
@@ -53,13 +53,9 @@ const commonFieldTypes = [
   "System.CreatedBy",
   "System.WorkItemType",
   "System.Tags",
-  "Microsoft.VSTS.Common.AcceptanceCriteria",
+  "System.CreatedDate",
   "Microsoft.VSTS.Common.Priority",
-  "Microsoft.VSTS.Common.BusinessValue",
-  "Microsoft.VSTS.Common.ValueArea",
-  "System.AreaPath",
-  "System.IterationPath",
-  "System.Reason"
+  "Microsoft.VSTS.Common.AcceptanceCriteria"
 ];
 
 const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenChange }) => {
@@ -126,6 +122,7 @@ const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenCha
 
   const handleSaveMapping = () => {
     // Create a more user-friendly version of the mapping for logging
+    // This now uses display names instead of reference names
     const displayMapping = Object.entries(mappings).reduce((acc, [key, mapping]) => {
       acc[key] = mapping.displayName || mapping.referenceName || "";
       return acc;
@@ -208,14 +205,14 @@ const FieldMappingDialog: React.FC<FieldMappingDialogProps> = ({ open, onOpenCha
     }
   };
   
-  // Filter the Azure fields to only show common ones to prevent dropdown overload
+  // Filter the Azure fields to only show those that are used in the WorkItemDetails component
   const filteredAzureFields = Array.isArray(azureFields) 
     ? azureFields.filter(field => 
-        commonFieldTypes.includes(field.referenceName) || 
-        field.name.toLowerCase().includes('description') ||
+        relevantFieldTypes.includes(field.referenceName) ||
         field.name.toLowerCase().includes('title') ||
-        field.name.toLowerCase().includes('acceptance') ||
-        field.name.toLowerCase().includes('additional')
+        field.name.toLowerCase().includes('description') ||
+        field.name.toLowerCase().includes('created') ||
+        field.name.toLowerCase().includes('assigned')
       )
     : [];
 
